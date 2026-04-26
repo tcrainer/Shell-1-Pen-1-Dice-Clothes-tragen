@@ -1,0 +1,336 @@
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Trophy, ArrowLeftRight, CheckCircle2, Info, Timer, AlertCircle, History } from 'lucide-react';
+
+const RAW_SENTENCES = [
+  { en: "I am wearing a black jacket.", de: "Ich trage eine schwarze Jacke." },
+  { en: "Today I am wearing a white T-shirt.", de: "Heute trage ich ein weißes T-Shirt." },
+  { en: "You (informal) are wearing blue jeans.", de: "Du trägst blaue Jeans." },
+  { en: "Now you are wearing a striped tie.", de: "Jetzt trägst du eine gestreifte Krawatte." },
+  { en: "He is wearing a red pullover.", de: "Er trägt einen roten Pullover." },
+  { en: "At home he wears comfortable trousers.", de: "Zu Hause trägt er eine bequeme Hose." },
+  { en: "She is wearing a long dress.", de: "Sie trägt ein langes Kleid." },
+  { en: "In the school we wear a uniform.", de: "In der Schule tragen wir eine Uniform." },
+  { en: "You (plural) are wearing new shoes.", de: "Ihr tragt neue Schuhe." },
+  { en: "Today you are wearing short trousers.", de: "Heute tragt ihr eine kurze Hose." },
+  { en: "They are wearing grey socks.", de: "Sie tragen graue Socken." },
+  { en: "He is wearing a fashionable suit.", de: "Er trägt einen modischen Anzug." },
+  { en: "She is wearing a green scarf.", de: "Sie trägt einen grünen Schal." },
+  { en: "I am wearing an old hat.", de: "Ich trage eine alte Mütze." },
+  { en: "Today I am wearing a yellow blouse.", de: "Heute trage ich eine gelbe Bluse." },
+  { en: "At home I wear a checked shirt.", de: "Zu Hause trage ich ein kariertes Hemd." },
+  { en: "My sister wears a pink skirt.", de: "Meine Schwester trägt einen rosa Rock." },
+  { en: "You (plural) wear winter boots.", de: "Ihr tragt Winterstiefel." },
+  { en: "Now she is wearing a warm coat.", de: "Jetzt trägt sie einen warmen Mantel." },
+  { en: "In school we wear comfortable clothes.", de: "In der Schule tragen wir bequeme Kleidung." },
+  // New Sentences
+  { en: "Normally I wear jeans.", de: "Normalerweise trage ich Jeans." },
+  { en: "In winter I wear a warm coat.", de: "Im Winter trage ich einen warmen Mantel." },
+  { en: "In summer I wear a swimsuit.", de: "Im Sommer trage ich einen Badeanzug." },
+  { en: "In my free time I wear comfortable clothes.", de: "In der Freizeit trage ich bequeme Kleidung." },
+  { en: "To the party I wear a beautiful dress.", de: "Zur Party trage ich ein schönes Kleid." },
+  { en: "In winter he wears a scarf.", de: "Im Winter trägt er einen Schal." },
+  { en: "In summer I wear shorts.", de: "Im Sommer trage ich eine kurze Hose." },
+  { en: "Normally she wears a blouse.", de: "Normalerweise trägt sie eine Bluse." },
+  { en: "In my free time he wears a hoodie.", de: "In der Freizeit trägt er einen Kapuzenpulli." },
+  { en: "To the party he wears a suit.", de: "Zur Party trägt er einen Anzug." },
+  { en: "In winter we wear boots.", de: "Im Winter tragen wir Stiefel." },
+  { en: "Normally they wear black clothes.", de: "Normalerweise tragen sie schwarze Kleidung." }
+];
+
+const ADJECTIVE_STEMS = [
+  "schwarz", "weiß", "weiss", "blau", "gestreift", "rot", "bequem", "lang", "neu", "kurz", "grau", "modisch", "grün", "gruen", "alt", "gelb", "kariert", "rosa", "warm", "schön", "schoen"
+];
+
+// Context groups for "Generous" matching
+const FLEXIBLE_CONTEXTS = {
+  school: ["in", "der", "die", "schule"],
+  party: ["zur", "zu", "der", "die", "party", "für", "fuer"],
+  time: ["im", "in", "dem", "der"],
+  leisure: ["freizeit", "meiner", "meine"]
+};
+
+const SPECIAL_CHARS = ['ä', 'ö', 'ü', 'ß'];
+
+export default function App() {
+  const shuffledSentences = useMemo(() => {
+    return [...RAW_SENTENCES].sort(() => Math.random() - 0.5);
+  }, []);
+
+  const [activePlayer, setActivePlayer] = useState('A');
+  const [timeLeft, setTimeLeft] = useState(300); 
+  const [isGameOver, setIsGameOver] = useState(false);
+  const [gameState, setGameState] = useState({
+    A: { index: 0, score: 0, currentInput: "", completed: false, history: [] },
+    B: { index: 0, score: 0, currentInput: "", completed: false, history: [] }
+  });
+  const [feedback, setFeedback] = useState(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (timeLeft <= 0 || isGameOver) {
+      if (timeLeft <= 0) setIsGameOver(true);
+      return;
+    }
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [timeLeft, isGameOver]);
+
+  useEffect(() => {
+    if (inputRef.current) inputRef.current.focus();
+  }, [activePlayer]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const normalize = (str) => {
+    return str.toLowerCase().replace(/[.,!?-]/g, "").trim();
+  };
+
+  const analyzeTranslation = (userInput, targetSentence) => {
+    const userWords = normalize(userInput).split(/\s+/).filter(w => w.length > 0);
+    const targetWords = targetSentence.split(/\s+/).filter(w => w.length > 0);
+    
+    return targetWords.map((targetWord, i) => {
+      const cleanTarget = normalize(targetWord);
+      const userWord = userWords[i];
+      let isCorrect = false;
+
+      if (userWord) {
+        // 1. Adjective Stems
+        const stemMatch = ADJECTIVE_STEMS.find(stem => cleanTarget.startsWith(stem));
+        if (stemMatch && userWord.startsWith(stemMatch)) {
+          isCorrect = true;
+        } 
+        // 2. Preposition/Article Generosity (The "Generous" Rule)
+        else {
+          let foundInGroup = false;
+          for (const group of Object.values(FLEXIBLE_CONTEXTS)) {
+            if (group.includes(cleanTarget) && group.includes(userWord)) {
+              foundInGroup = true;
+              break;
+            }
+          }
+          if (foundInGroup) {
+            isCorrect = true;
+          }
+          // 3. Exact match
+          else if (userWord === cleanTarget) {
+            isCorrect = true;
+          }
+        }
+      }
+
+      return {
+        word: targetWord,
+        isCorrect
+      };
+    });
+  };
+
+  const handleSwap = () => {
+    setActivePlayer(prev => prev === 'A' ? 'B' : 'A');
+    setFeedback(null);
+  };
+
+  const insertChar = (char) => {
+    const currentText = gameState[activePlayer].currentInput;
+    const newVal = currentText + char;
+    setGameState(prev => ({
+      ...prev,
+      [activePlayer]: { ...prev[activePlayer], currentInput: newVal }
+    }));
+    inputRef.current.focus();
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const player = gameState[activePlayer];
+    if (player.completed) return;
+
+    const targetSentence = shuffledSentences[player.index].de;
+    const wordAnalysis = analyzeTranslation(player.currentInput, targetSentence);
+    const pointsEarned = wordAnalysis.filter(w => w.isCorrect).length;
+    
+    const nextIndex = player.index + 1;
+    const isFinished = nextIndex >= shuffledSentences.length;
+
+    const historyItem = {
+      en: shuffledSentences[player.index].en,
+      de: targetSentence,
+      analysis: wordAnalysis
+    };
+
+    setGameState(prev => ({
+      ...prev,
+      [activePlayer]: {
+        ...prev[activePlayer],
+        score: prev[activePlayer].score + pointsEarned,
+        index: nextIndex,
+        currentInput: "",
+        completed: isFinished,
+        history: [historyItem, ...prev[activePlayer].history]
+      }
+    }));
+
+    setFeedback({ points: pointsEarned });
+    setTimeout(() => setFeedback(null), 3000);
+  };
+
+  const currentPlayer = gameState[activePlayer];
+
+  if (isGameOver || (gameState.A.completed && gameState.B.completed)) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
+        <div className="bg-white p-8 rounded-3xl shadow-2xl text-center max-w-md w-full border-t-8 border-indigo-600">
+          <Trophy className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">Match Result!</h1>
+          <p className="text-xl text-slate-600 mb-6">Time is up or all sentences translated!</p>
+          <div className="space-y-4 mb-8">
+            <div className={`flex justify-between items-center p-4 rounded-xl ${gameState.A.score > gameState.B.score ? 'bg-indigo-50 ring-2 ring-indigo-500' : 'bg-slate-100'}`}>
+              <span className="font-bold text-slate-700">Student A</span>
+              <span className="text-2xl font-black text-indigo-600">{gameState.A.score}</span>
+            </div>
+            <div className={`flex justify-between items-center p-4 rounded-xl ${gameState.B.score > gameState.A.score ? 'bg-emerald-50 ring-2 ring-emerald-500' : 'bg-slate-100'}`}>
+              <span className="font-bold text-slate-700">Student B</span>
+              <span className="text-2xl font-black text-emerald-600">{gameState.B.score}</span>
+            </div>
+          </div>
+          <button onClick={() => window.location.reload()} className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg">
+            Restart Match
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100 p-4 md:p-8 font-sans">
+      <div className="max-w-4xl mx-auto flex flex-col md:flex-row gap-4 mb-8 items-center justify-between">
+        <div className="flex items-center gap-3 bg-white px-6 py-3 rounded-2xl shadow-md border-b-4 border-slate-200">
+          <Timer className={`w-6 h-6 ${timeLeft < 30 ? 'text-red-500 animate-pulse' : 'text-indigo-600'}`} />
+          <span className={`text-2xl font-black ${timeLeft < 30 ? 'text-red-600' : 'text-slate-700'}`}>
+            {formatTime(timeLeft)}
+          </span>
+        </div>
+
+        <button 
+          onClick={handleSwap}
+          className="flex-grow max-w-md bg-orange-500 hover:bg-orange-600 text-white font-black py-4 px-8 rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95 group"
+        >
+          <ArrowLeftRight className="w-8 h-8 group-hover:rotate-180 transition-transform duration-500" />
+          <span className="text-xl md:text-2xl uppercase tracking-wider">Dice 6? Swap!</span>
+        </button>
+      </div>
+
+      <div className="max-w-4xl mx-auto grid grid-cols-2 gap-4 mb-8">
+        <div className={`p-4 rounded-2xl transition-all duration-300 transform ${activePlayer === 'A' ? 'bg-white shadow-lg ring-4 ring-indigo-500 scale-105' : 'bg-white/60 opacity-60'}`}>
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Student A</p>
+              <p className="text-2xl font-black text-indigo-600">{gameState.A.score}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-slate-400">PROGRESS</p>
+              <p className="text-sm font-bold text-slate-600">{gameState.A.index}/{shuffledSentences.length}</p>
+            </div>
+          </div>
+          <div className="w-full bg-slate-200 h-1.5 mt-2 rounded-full overflow-hidden">
+            <div className="bg-indigo-500 h-full transition-all" style={{width: `${(gameState.A.index/shuffledSentences.length)*100}%`}}></div>
+          </div>
+        </div>
+
+        <div className={`p-4 rounded-2xl transition-all duration-300 transform ${activePlayer === 'B' ? 'bg-white shadow-lg ring-4 ring-emerald-500 scale-105' : 'bg-white/60 opacity-60'}`}>
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Student B</p>
+              <p className="text-2xl font-black text-emerald-600">{gameState.B.score}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-slate-400">PROGRESS</p>
+              <p className="text-sm font-bold text-slate-600">{gameState.B.index}/{shuffledSentences.length}</p>
+            </div>
+          </div>
+          <div className="w-full bg-slate-200 h-1.5 mt-2 rounded-full overflow-hidden">
+            <div className="bg-emerald-500 h-full transition-all" style={{width: `${(gameState.B.index/shuffledSentences.length)*100}%`}}></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-2xl mx-auto space-y-8">
+        {!currentPlayer.completed ? (
+          <div className="bg-white p-8 rounded-3xl shadow-lg border-b-4 border-slate-200">
+            <div className="flex items-center gap-2 text-indigo-600 mb-2">
+              <Info className="w-4 h-4" />
+              <span className="text-xs font-bold uppercase tracking-widest">Translate to German</span>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-800 mb-6 leading-tight">
+              {shuffledSentences[currentPlayer.index].en}
+            </h2>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <input
+                ref={inputRef}
+                type="text"
+                value={currentPlayer.currentInput}
+                onChange={(e) => setGameState(prev => ({...prev, [activePlayer]: {...prev[activePlayer], currentInput: e.target.value}}))}
+                placeholder="Type your translation..."
+                className="w-full text-xl p-5 border-2 border-slate-200 rounded-2xl focus:border-indigo-500 focus:outline-none transition-all shadow-inner"
+                autoComplete="off"
+              />
+              <div className="flex flex-wrap gap-2">
+                {SPECIAL_CHARS.map(char => (
+                  <button key={char} type="button" onClick={() => insertChar(char)} className="w-12 h-12 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-slate-700 shadow-sm transition-all">{char}</button>
+                ))}
+                <div className="flex-grow"></div>
+                <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3 rounded-2xl font-black shadow-lg transition-all active:scale-95">SUBMIT</button>
+              </div>
+            </form>
+
+            {feedback && (
+              <div className="mt-4 p-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold flex items-center gap-2 animate-bounce">
+                <CheckCircle2 className="w-5 h-5" /> +{feedback.points} Points Awarded!
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-green-100 p-8 rounded-3xl text-center border-2 border-green-200 shadow-md">
+            <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-2" />
+            <h3 className="text-2xl font-black text-green-800 uppercase">You've Finished!</h3>
+            <p className="text-green-700">Wait for your partner or help them reach the end!</p>
+          </div>
+        )}
+
+        {currentPlayer.history.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 px-2">
+              <History className="w-5 h-5 text-slate-400" />
+              <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Translation History (Student {activePlayer})</h3>
+            </div>
+            <div className="space-y-3">
+              {currentPlayer.history.map((item, idx) => (
+                <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">{item.en}</p>
+                  <div className="flex flex-wrap gap-x-2 gap-y-1 text-lg font-medium">
+                    {item.analysis.map((wordObj, wIdx) => (
+                      <span 
+                        key={wIdx} 
+                        className={`${wordObj.isCorrect ? 'text-emerald-600 font-bold' : 'text-red-500 underline decoration-dotted underline-offset-4 decoration-2 opacity-80'}`}
+                      >
+                        {wordObj.word}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
