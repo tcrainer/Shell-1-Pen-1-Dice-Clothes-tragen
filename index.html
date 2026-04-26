@@ -36,39 +36,43 @@ const Timer = (p) => <Icon {...p}><line x1="10" x2="14" y1="2" y2="2"/><line x1=
 const History = (p) => <Icon {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></Icon>;
 
 /* ---------- Sentence data ---------- */
+/* ---------- Sentence data ----------
+   gender: "m" (der → blue), "f" (die → red), "n" (das → green), "pl" (yellow)
+   targetNoun: the English word(s) to highlight in the prompt
+*/
 const RAW_SENTENCES = [
-  { en: "I am wearing a black jacket.", de: "Ich trage eine schwarze Jacke." },
-  { en: "Today I am wearing a white T-shirt.", de: "Heute trage ich ein weißes T-Shirt." },
-  { en: "You (informal) are wearing blue jeans.", de: "Du trägst blaue Jeans." },
-  { en: "Now you are wearing a striped tie.", de: "Jetzt trägst du eine gestreifte Krawatte." },
-  { en: "He is wearing a red pullover.", de: "Er trägt einen roten Pullover." },
-  { en: "At home he wears comfortable trousers.", de: "Zu Hause trägt er eine bequeme Hose." },
-  { en: "She is wearing a long dress.", de: "Sie trägt ein langes Kleid." },
-  { en: "In the school we wear a uniform.", de: "In der Schule tragen wir eine Uniform." },
-  { en: "You (plural) are wearing new shoes.", de: "Ihr tragt neue Schuhe." },
-  { en: "Today you are wearing short trousers.", de: "Heute tragt ihr eine kurze Hose." },
-  { en: "They are wearing grey socks.", de: "Sie tragen graue Socken." },
-  { en: "He is wearing a fashionable suit.", de: "Er trägt einen modischen Anzug." },
-  { en: "She is wearing a green scarf.", de: "Sie trägt einen grünen Schal." },
-  { en: "I am wearing an old hat.", de: "Ich trage eine alte Mütze." },
-  { en: "Today I am wearing a yellow blouse.", de: "Heute trage ich eine gelbe Bluse." },
-  { en: "At home I wear a checked shirt.", de: "Zu Hause trage ich ein kariertes Hemd." },
-  { en: "My sister wears a pink skirt.", de: "Meine Schwester trägt einen rosa Rock." },
-  { en: "You (plural) wear winter boots.", de: "Ihr tragt Winterstiefel." },
-  { en: "Now she is wearing a warm coat.", de: "Jetzt trägt sie einen warmen Mantel." },
-  { en: "In school we wear comfortable clothes.", de: "In der Schule tragen wir bequeme Kleidung." },
-  { en: "Normally I wear jeans.", de: "Normalerweise trage ich Jeans." },
-  { en: "In winter I wear a warm coat.", de: "Im Winter trage ich einen warmen Mantel." },
-  { en: "In summer I wear a swimsuit.", de: "Im Sommer trage ich einen Badeanzug." },
-  { en: "In my free time I wear comfortable clothes.", de: "In der Freizeit trage ich bequeme Kleidung." },
-  { en: "To the party I wear a beautiful dress.", de: "Zur Party trage ich ein schönes Kleid." },
-  { en: "In winter he wears a scarf.", de: "Im Winter trägt er einen Schal." },
-  { en: "In summer I wear shorts.", de: "Im Sommer trage ich eine kurze Hose." },
-  { en: "Normally she wears a blouse.", de: "Normalerweise trägt sie eine Bluse." },
-  { en: "In my free time he wears a hoodie.", de: "In der Freizeit trägt er einen Kapuzenpulli." },
-  { en: "To the party he wears a suit.", de: "Zur Party trägt er einen Anzug." },
-  { en: "In winter we wear boots.", de: "Im Winter tragen wir Stiefel." },
-  { en: "Normally they wear black clothes.", de: "Normalerweise tragen sie schwarze Kleidung." }
+  { en: "I am wearing a black jacket.", de: "Ich trage eine schwarze Jacke.", targetNoun: "jacket", gender: "f" },
+  { en: "Today I am wearing a white T-shirt.", de: "Heute trage ich ein weißes T-Shirt.", targetNoun: "T-shirt", gender: "n" },
+  { en: "You (informal) are wearing blue jeans.", de: "Du trägst blaue Jeans.", targetNoun: "jeans", gender: "pl" },
+  { en: "Now you are wearing a striped tie.", de: "Jetzt trägst du eine gestreifte Krawatte.", targetNoun: "tie", gender: "f" },
+  { en: "He is wearing a red pullover.", de: "Er trägt einen roten Pullover.", targetNoun: "pullover", gender: "m" },
+  { en: "At home he wears comfortable trousers.", de: "Zu Hause trägt er eine bequeme Hose.", targetNoun: "trousers", gender: "f" },
+  { en: "She is wearing a long dress.", de: "Sie trägt ein langes Kleid.", targetNoun: "dress", gender: "n" },
+  { en: "In the school we wear a uniform.", de: "In der Schule tragen wir eine Uniform.", targetNoun: "uniform", gender: "f" },
+  { en: "You (plural) are wearing new shoes.", de: "Ihr tragt neue Schuhe.", targetNoun: "shoes", gender: "pl" },
+  { en: "Today you are wearing short trousers.", de: "Heute tragt ihr eine kurze Hose.", targetNoun: "short trousers", gender: "f" },
+  { en: "They are wearing grey socks.", de: "Sie tragen graue Socken.", targetNoun: "socks", gender: "pl" },
+  { en: "He is wearing a fashionable suit.", de: "Er trägt einen modischen Anzug.", targetNoun: "suit", gender: "m" },
+  { en: "She is wearing a green scarf.", de: "Sie trägt einen grünen Schal.", targetNoun: "scarf", gender: "m" },
+  { en: "I am wearing an old hat.", de: "Ich trage eine alte Mütze.", targetNoun: "hat", gender: "f" },
+  { en: "Today I am wearing a yellow blouse.", de: "Heute trage ich eine gelbe Bluse.", targetNoun: "blouse", gender: "f" },
+  { en: "At home I wear a checked shirt.", de: "Zu Hause trage ich ein kariertes Hemd.", targetNoun: "shirt", gender: "n" },
+  { en: "My sister wears a pink skirt.", de: "Meine Schwester trägt einen rosa Rock.", targetNoun: "skirt", gender: "m" },
+  { en: "You (plural) wear winter boots.", de: "Ihr tragt Winterstiefel.", targetNoun: "winter boots", gender: "pl" },
+  { en: "Now she is wearing a warm coat.", de: "Jetzt trägt sie einen warmen Mantel.", targetNoun: "coat", gender: "m" },
+  { en: "In school we wear comfortable clothes.", de: "In der Schule tragen wir bequeme Kleidung.", targetNoun: "clothes", gender: "f" },
+  { en: "Normally I wear jeans.", de: "Normalerweise trage ich Jeans.", targetNoun: "jeans", gender: "pl" },
+  { en: "In winter I wear a warm coat.", de: "Im Winter trage ich einen warmen Mantel.", targetNoun: "coat", gender: "m" },
+  { en: "In summer I wear a swimsuit.", de: "Im Sommer trage ich einen Badeanzug.", targetNoun: "swimsuit", gender: "m" },
+  { en: "In my free time I wear comfortable clothes.", de: "In der Freizeit trage ich bequeme Kleidung.", targetNoun: "clothes", gender: "f" },
+  { en: "To the party I wear a beautiful dress.", de: "Zur Party trage ich ein schönes Kleid.", targetNoun: "dress", gender: "n" },
+  { en: "In winter he wears a scarf.", de: "Im Winter trägt er einen Schal.", targetNoun: "scarf", gender: "m" },
+  { en: "In summer I wear shorts.", de: "Im Sommer trage ich eine kurze Hose.", targetNoun: "shorts", gender: "f" },
+  { en: "Normally she wears a blouse.", de: "Normalerweise trägt sie eine Bluse.", targetNoun: "blouse", gender: "f" },
+  { en: "In my free time he wears a hoodie.", de: "In der Freizeit trägt er einen Kapuzenpulli.", targetNoun: "hoodie", gender: "m" },
+  { en: "To the party he wears a suit.", de: "Zur Party trägt er einen Anzug.", targetNoun: "suit", gender: "m" },
+  { en: "In winter we wear boots.", de: "Im Winter tragen wir Stiefel.", targetNoun: "boots", gender: "pl" },
+  { en: "Normally they wear black clothes.", de: "Normalerweise tragen sie schwarze Kleidung.", targetNoun: "clothes", gender: "f" }
 ];
 
 const ADJECTIVE_STEMS = [
@@ -120,6 +124,37 @@ const checkInversionBonus = (userInput, targetSentence) => {
   if (!afterVerb) return false;
   if (afterVerb === "meine") return true; // "...trägt meine Schwester..."
   return SUBJECT_PRONOUNS.includes(afterVerb);
+};
+
+/* ---------- Gender colour scheme for the English prompt ---------- */
+const GENDER_STYLES = {
+  m:  { className: "text-blue-600 font-black underline decoration-2 underline-offset-4", label: "der" },
+  f:  { className: "text-red-600 font-black underline decoration-2 underline-offset-4", label: "die" },
+  n:  { className: "text-green-600 font-black underline decoration-2 underline-offset-4", label: "das" },
+  pl: { className: "text-yellow-600 font-black underline decoration-2 underline-offset-4", label: "die (pl.)" }
+};
+
+// Render an English sentence with the target noun highlighted in the
+// colour of its German gender. Case-insensitive, matches the FIRST occurrence.
+const HighlightedSentence = ({ en, targetNoun, gender }) => {
+  const style = GENDER_STYLES[gender];
+  if (!style || !targetNoun) return <span>{en}</span>;
+
+  const lower = en.toLowerCase();
+  const idx = lower.indexOf(targetNoun.toLowerCase());
+  if (idx === -1) return <span>{en}</span>;
+
+  const before = en.slice(0, idx);
+  const match = en.slice(idx, idx + targetNoun.length);
+  const after = en.slice(idx + targetNoun.length);
+
+  return (
+    <span>
+      {before}
+      <span className={style.className} title={`German gender: ${style.label}`}>{match}</span>
+      {after}
+    </span>
+  );
 };
 
 /* ---------- Main App ---------- */
@@ -225,6 +260,8 @@ function App() {
     const historyItem = {
       en: sentences[player.index].en,
       de: targetSentence,
+      targetNoun: sentences[player.index].targetNoun,
+      gender: sentences[player.index].gender,
       analysis: wordAnalysis,
       inversionBonus
     };
@@ -293,6 +330,15 @@ function App() {
         </button>
       </div>
 
+      {/* Colour legend */}
+      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 px-4 py-3 mb-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Noun colour =</span>
+        <span><span className="text-blue-600 font-black underline decoration-2 underline-offset-4">der</span> <span className="text-slate-500">(m)</span></span>
+        <span><span className="text-red-600 font-black underline decoration-2 underline-offset-4">die</span> <span className="text-slate-500">(f)</span></span>
+        <span><span className="text-green-600 font-black underline decoration-2 underline-offset-4">das</span> <span className="text-slate-500">(n)</span></span>
+        <span><span className="text-yellow-600 font-black underline decoration-2 underline-offset-4">die</span> <span className="text-slate-500">(pl.)</span></span>
+      </div>
+
       {/* Score cards */}
       <div className="max-w-4xl mx-auto grid grid-cols-2 gap-4 mb-8">
         <div className={`p-4 rounded-2xl transition-all duration-300 transform ${activePlayer === 'A' ? 'bg-white shadow-lg ring-4 ring-indigo-500 scale-105' : 'bg-white/60 opacity-60'}`}>
@@ -337,7 +383,11 @@ function App() {
               <span className="text-xs font-bold uppercase tracking-widest">Translate to German</span>
             </div>
             <h2 className="text-2xl md:text-3xl font-bold text-slate-800 mb-6 leading-tight">
-              {studentSentences[activePlayer][currentPlayer.index].en}
+              <HighlightedSentence
+                en={studentSentences[activePlayer][currentPlayer.index].en}
+                targetNoun={studentSentences[activePlayer][currentPlayer.index].targetNoun}
+                gender={studentSentences[activePlayer][currentPlayer.index].gender}
+              />
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -402,7 +452,9 @@ function App() {
               {currentPlayer.history.map((item, idx) => (
                 <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 animate-fade-in-up">
                   <div className="flex items-start justify-between gap-3 mb-1">
-                    <p className="text-xs font-bold text-slate-400 uppercase">{item.en}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase">
+                      <HighlightedSentence en={item.en} targetNoun={item.targetNoun} gender={item.gender} />
+                    </p>
                     {item.inversionBonus > 0 && (
                       <span className="text-[10px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full whitespace-nowrap">
                         ⚡ +1 INVERSION
