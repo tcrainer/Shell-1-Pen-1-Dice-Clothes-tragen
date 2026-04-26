@@ -86,12 +86,50 @@ const FLEXIBLE_CONTEXTS = {
 
 const SPECIAL_CHARS = ['ä', 'ö', 'ü', 'ß'];
 
+/* ---------- Inversion bonus logic ---------- */
+// All conjugated forms of "tragen" that appear in the sentence pool
+const VERB_FORMS = ["trage", "trägst", "tragst", "trägt", "tragt", "tragen"];
+
+// Single-word subject pronouns that come immediately after the verb
+const SUBJECT_PRONOUNS = ["ich", "du", "er", "sie", "es", "wir", "ihr"];
+
+const startsWithSubject = (sentence) => {
+  const firstWord = sentence.toLowerCase().replace(/[.,!?-]/g, "").trim().split(/\s+/)[0];
+  // "Meine Schwester trägt..." starts with a subject (the noun phrase)
+  if (firstWord === "meine") return true;
+  return SUBJECT_PRONOUNS.includes(firstWord);
+};
+
+// Award a bonus point when the target sentence requires V-S inversion
+// (it starts with a time/place phrase) AND the student's answer correctly
+// places the verb directly before the subject.
+const checkInversionBonus = (userInput, targetSentence) => {
+  // Only relevant when the target requires inversion
+  if (startsWithSubject(targetSentence)) return false;
+
+  const words = userInput.toLowerCase().replace(/[.,!?-]/g, "").trim().split(/\s+/).filter(Boolean);
+  if (words.length < 3) return false; // need at least: [phrase] [verb] [subject]
+
+  // Find the first verb form in the student's answer
+  const verbIndex = words.findIndex(w => VERB_FORMS.includes(w));
+  if (verbIndex < 1) return false; // verb must come AFTER something (the fronted phrase),
+                                   // i.e. not at position 0 — that would be a question/command
+
+  // The word right after the verb must be a subject
+  const afterVerb = words[verbIndex + 1];
+  if (!afterVerb) return false;
+  if (afterVerb === "meine") return true; // "...trägt meine Schwester..."
+  return SUBJECT_PRONOUNS.includes(afterVerb);
+};
+
 /* ---------- Main App ---------- */
 function App() {
-  const shuffledSentences = useMemo(
-    () => [...RAW_SENTENCES].sort(() => Math.random() - 0.5),
-    []
-  );
+  // Each student gets their own independently shuffled list,
+  // so A and B start on different sentences and don't see the same order.
+  const studentSentences = useMemo(() => ({
+    A: [...RAW_SENTENCES].sort(() => Math.random() - 0.5),
+    B: [...RAW_SENTENCES].sort(() => Math.random() - 0.5)
+  }), []);
 
   const [activePlayer, setActivePlayer] = useState('A');
   const [timeLeft, setTimeLeft] = useState(300);
@@ -175,24 +213,27 @@ function App() {
     const player = gameState[activePlayer];
     if (player.completed) return;
 
-    const targetSentence = shuffledSentences[player.index].de;
+    const sentences = studentSentences[activePlayer];
+    const targetSentence = sentences[player.index].de;
     const wordAnalysis = analyzeTranslation(player.currentInput, targetSentence);
     const pointsEarned = wordAnalysis.filter(w => w.isCorrect).length;
+    const inversionBonus = checkInversionBonus(player.currentInput, targetSentence) ? 1 : 0;
 
     const nextIndex = player.index + 1;
-    const isFinished = nextIndex >= shuffledSentences.length;
+    const isFinished = nextIndex >= sentences.length;
 
     const historyItem = {
-      en: shuffledSentences[player.index].en,
+      en: sentences[player.index].en,
       de: targetSentence,
-      analysis: wordAnalysis
+      analysis: wordAnalysis,
+      inversionBonus
     };
 
     setGameState(prev => ({
       ...prev,
       [activePlayer]: {
         ...prev[activePlayer],
-        score: prev[activePlayer].score + pointsEarned,
+        score: prev[activePlayer].score + pointsEarned + inversionBonus,
         index: nextIndex,
         currentInput: "",
         completed: isFinished,
@@ -200,7 +241,7 @@ function App() {
       }
     }));
 
-    setFeedback({ points: pointsEarned });
+    setFeedback({ points: pointsEarned, inversionBonus });
     setTimeout(() => setFeedback(null), 3000);
   };
 
@@ -262,11 +303,11 @@ function App() {
             </div>
             <div className="text-right">
               <p className="text-[10px] text-slate-400">PROGRESS</p>
-              <p className="text-sm font-bold text-slate-600">{gameState.A.index}/{shuffledSentences.length}</p>
+              <p className="text-sm font-bold text-slate-600">{gameState.A.index}/{studentSentences.A.length}</p>
             </div>
           </div>
           <div className="w-full bg-slate-200 h-1.5 mt-2 rounded-full overflow-hidden">
-            <div className="bg-indigo-500 h-full transition-all" style={{ width: `${(gameState.A.index / shuffledSentences.length) * 100}%` }}></div>
+            <div className="bg-indigo-500 h-full transition-all" style={{ width: `${(gameState.A.index / studentSentences.A.length) * 100}%` }}></div>
           </div>
         </div>
 
@@ -278,11 +319,11 @@ function App() {
             </div>
             <div className="text-right">
               <p className="text-[10px] text-slate-400">PROGRESS</p>
-              <p className="text-sm font-bold text-slate-600">{gameState.B.index}/{shuffledSentences.length}</p>
+              <p className="text-sm font-bold text-slate-600">{gameState.B.index}/{studentSentences.B.length}</p>
             </div>
           </div>
           <div className="w-full bg-slate-200 h-1.5 mt-2 rounded-full overflow-hidden">
-            <div className="bg-emerald-500 h-full transition-all" style={{ width: `${(gameState.B.index / shuffledSentences.length) * 100}%` }}></div>
+            <div className="bg-emerald-500 h-full transition-all" style={{ width: `${(gameState.B.index / studentSentences.B.length) * 100}%` }}></div>
           </div>
         </div>
       </div>
@@ -296,7 +337,7 @@ function App() {
               <span className="text-xs font-bold uppercase tracking-widest">Translate to German</span>
             </div>
             <h2 className="text-2xl md:text-3xl font-bold text-slate-800 mb-6 leading-tight">
-              {shuffledSentences[currentPlayer.index].en}
+              {studentSentences[activePlayer][currentPlayer.index].en}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -328,8 +369,16 @@ function App() {
             </form>
 
             {feedback && (
-              <div className="mt-4 p-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold flex items-center gap-2 animate-bounce-soft">
-                <CheckCircle2 className="w-5 h-5" /> +{feedback.points} Points Awarded!
+              <div className="mt-4 space-y-2 animate-fade-in-up">
+                <div className="p-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5" /> +{feedback.points} Points Awarded!
+                </div>
+                {feedback.inversionBonus > 0 && (
+                  <div className="p-3 bg-amber-50 text-amber-800 rounded-xl font-bold flex items-center gap-2 border-2 border-amber-200">
+                    <span className="text-xl">⚡</span>
+                    +1 Bonus — Inversion correct! (verb before subject)
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -352,7 +401,14 @@ function App() {
             <div className="space-y-3">
               {currentPlayer.history.map((item, idx) => (
                 <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 animate-fade-in-up">
-                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">{item.en}</p>
+                  <div className="flex items-start justify-between gap-3 mb-1">
+                    <p className="text-xs font-bold text-slate-400 uppercase">{item.en}</p>
+                    {item.inversionBonus > 0 && (
+                      <span className="text-[10px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                        ⚡ +1 INVERSION
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-x-2 gap-y-1 text-lg font-medium">
                     {item.analysis.map((wordObj, wIdx) => (
                       <span key={wIdx}
